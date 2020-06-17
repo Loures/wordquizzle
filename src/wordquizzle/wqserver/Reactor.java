@@ -8,6 +8,9 @@ import java.util.List;
 import java.util.LinkedList;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
+import java.util.Arrays;
+import java.util.Comparator;
+import java.util.NoSuchElementException;
 
 /**
  * This class implements a sort of Reactor pattern for handling reads and writes
@@ -15,12 +18,20 @@ import java.util.concurrent.TimeUnit;
  */
 public class Reactor extends Thread {
 
-	public static int reactors = 0;
+	public static int reactornum = 0;
+	public static Reactor[] reactors;
 	private int id;
 	private int numOfChannels ;
 	private Selector selector;
 	private BlockingQueue<SocketChannel> queue;
 	private List<SocketChannel> channels;
+
+
+	public static Reactor getReactor() {
+		return Arrays.stream(reactors)
+		             .min(Comparator.comparing(Reactor::getNumOfChannels))
+		             .orElseThrow(NoSuchElementException::new);
+	}
 
 	/**
 	 * Constructor method
@@ -30,7 +41,7 @@ public class Reactor extends Thread {
 			this.selector = Selector.open();
 			this.queue = new LinkedBlockingQueue<>();
 			this.channels = new LinkedList<>();
-			this.id = Reactor.reactors++;
+			this.id = Reactor.reactornum++;
 			this.numOfChannels = 0;
 		} catch (IOException e) {
 			e.printStackTrace();

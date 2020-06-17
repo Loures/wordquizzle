@@ -56,10 +56,7 @@ public class Acceptor {
 						final SocketChannel client = server.accept();
 						client.configureBlocking(false);
 						Logger.logInfo("Accepted connection from ", client.getLocalAddress());
-						WQServer.getReactor().registerChannel(client);
-						for (Reactor reactor : WQServer.reactors) {
-							Logger.logInfo(reactor, ": ", new Integer(reactor.getNumOfChannels()));
-						}
+						Reactor.getReactor().registerChannel(client);
 					}
 				}
 				selector.selectedKeys().clear();

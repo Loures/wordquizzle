@@ -1,24 +1,13 @@
-
 package wordquizzle.wqserver;
 
 import wordquizzle.Logger;
-import wordquizzle.wqserver.Reactor;
+import wordquizzle.wqserver.Database.UserNotFoundException;
 
-import java.util.Arrays;
 import java.util.Random;
-import java.util.Comparator;
-import java.util.NoSuchElementException;
 
 public class WQServer {
+	
 	private static int port;
-	public static Reactor[] reactors;
-
-	public static Reactor getReactor() {
-
-		return Arrays.stream(WQServer.reactors)
-		             .min(Comparator.comparing(Reactor::getNumOfChannels))
-		             .orElseThrow(NoSuchElementException::new);
-	}
 
 	public static void main(final String[] args) {
 
@@ -27,6 +16,7 @@ public class WQServer {
 			public void run() {
 				Acceptor acceptor;
 				if ((acceptor = Acceptor.getAcceptor()) != null) acceptor.close();
+				for (Reactor reactor : Reactor.reactors) reactor.close();
 				Random rand = new Random(System.nanoTime());
 				switch(rand.nextInt(3)) {
 					case 0:
@@ -64,10 +54,10 @@ public class WQServer {
 			}
 		}).start();
 		
-		WQServer.reactors = new Reactor[Runtime.getRuntime().availableProcessors()];
+		Reactor.reactors = new Reactor[Runtime.getRuntime().availableProcessors()];
 		for (int i = 0; i < Runtime.getRuntime().availableProcessors(); i++) {
-			WQServer.reactors[i] = new Reactor();
-			WQServer.reactors[i].start();
+			Reactor.reactors[i] = new Reactor();
+			Reactor.reactors[i].start();
 		}
 
 		Acceptor acceptor = Acceptor.getAcceptor();
