@@ -6,7 +6,7 @@ import java.io.IOException;
 import java.net.*;
 
 /**
- * This class implements the TCP connection acceptor as a Singleton.
+ * the {@code Acceptor} class implements the TCP connection acceptor as a Singleton.
  */
 public class Acceptor {
 
@@ -55,7 +55,7 @@ public class Acceptor {
 						final ServerSocketChannel server = (ServerSocketChannel) key.channel();
 						final SocketChannel client = server.accept();
 						client.configureBlocking(false);
-						Logger.logInfo("Accepted connection from ", client.getLocalAddress());
+						Logger.logInfo("Accepted connection from ", client.getRemoteAddress());
 						Reactor.getReactor().registerChannel(client);
 					}
 				}

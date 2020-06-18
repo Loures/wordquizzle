@@ -1,8 +1,6 @@
 package wordquizzle.wqserver;
 
 import wordquizzle.Logger;
-import wordquizzle.wqserver.Database.UserNotFoundException;
-
 import java.util.Random;
 
 public class WQServer {
@@ -50,6 +48,10 @@ public class WQServer {
 				while (!Thread.interrupted()) {
 					String line = System.console().readLine();
 					if (line.trim().toLowerCase().equals("quit")) System.exit(0);
+					try {
+
+						Logger.logInfo(Database.getDatabase().getUser(line).checkPassword(line+"password"));
+					} catch (Exception e) {e.printStackTrace();}
 				}
 			}
 		}).start();

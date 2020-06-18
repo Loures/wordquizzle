@@ -1,6 +1,5 @@
 package wordquizzle.wqserver;
 
-import wordquizzle.Logger;
 import java.io.IOException;
 import java.nio.channels.*;
 import java.util.concurrent.BlockingQueue;
@@ -13,7 +12,7 @@ import java.util.Comparator;
 import java.util.NoSuchElementException;
 
 /**
- * This class implements a sort of Reactor pattern for handling reads and writes
+ * The {@code Reactor} class implements a sort of Reactor pattern for handling reads and writes
  * on a stream socket.
  */
 public class Reactor extends Thread {
@@ -27,6 +26,10 @@ public class Reactor extends Thread {
 	private List<SocketChannel> channels;
 
 
+	/**
+	 * Returns the "least busy" reactor.
+	 * @return the "least busy" reactor.
+	 */
 	public static Reactor getReactor() {
 		return Arrays.stream(reactors)
 		             .min(Comparator.comparing(Reactor::getNumOfChannels))
@@ -55,6 +58,7 @@ public class Reactor extends Thread {
 	public void registerChannel(SocketChannel channel) {
 		queue.add(channel);
 		this.numOfChannels++;
+		selector.wakeup();
 	}
 
 	/**
@@ -64,6 +68,9 @@ public class Reactor extends Thread {
 	public void removeChannel(SocketChannel channel) {
 		channels.remove(channel);
 		this.numOfChannels--;
+		try {
+			channel.close();
+		} catch (IOException e) {e.printStackTrace();}
 	}
 	/**
 	 * Returns the number of channels registered to a Reactor
@@ -71,6 +78,14 @@ public class Reactor extends Thread {
 	 */
 	public int getNumOfChannels() {
 		return this.numOfChannels;
+	}
+
+	/**
+	 * Returns the Reactor's selector.
+	 * @return the reactor's selector.
+	 */
+	public Selector getSelector() {
+		return selector;
 	}
 
 	/**
@@ -83,7 +98,7 @@ public class Reactor extends Thread {
 			if ((channel = queue.poll(25, TimeUnit.MILLISECONDS)) != null) {
 				SelectionKey key = channel.register(selector, SelectionKey.OP_READ);
 				channels.add(channel);
-				EventHandler evh = (EventHandler)new SampleEventHandler(key);
+				EventHandler evh = (EventHandler)new DefaultEventHandler(key);
 				evh.registerHandler(this);
 				key.attach(evh);
 			}
@@ -101,14 +116,18 @@ public class Reactor extends Thread {
 						selector.select();
 						for (SelectionKey key : selector.selectedKeys()) {
 							EventHandler evh = (EventHandler)key.attachment();
-							if (key.isReadable()) evh.handle();
+							//Handle writes
 							if (key.isWritable()) evh.send();
+							
+							//Handle reads
+							if (key.isReadable()) evh.handle();
+							
 						}
+						System.out.println(this);
 						selector.selectedKeys().clear();
 					}
 				}
 			catch (IOException e) {
-				Logger.logErr(e.toString());
 				e.printStackTrace();
 				System.exit(1);
 				return;
