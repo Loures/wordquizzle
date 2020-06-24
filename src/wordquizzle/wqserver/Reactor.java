@@ -25,7 +25,6 @@ public class Reactor extends Thread {
 	private BlockingQueue<SocketChannel> queue;
 	private List<SocketChannel> channels;
 
-
 	/**
 	 * Returns the "least busy" reactor.
 	 * @return the "least busy" reactor.
@@ -117,10 +116,18 @@ public class Reactor extends Thread {
 						for (SelectionKey key : selector.selectedKeys()) {
 							EventHandler evh = (EventHandler)key.attachment();
 							//Handle writes
-							if (key.isWritable()) evh.send();
+							if (key.isWritable())
+								try {evh.send();} catch (IOException e) {
+									removeChannel((SocketChannel)key.channel());
+									key.cancel();
+								}
 							
 							//Handle reads
-							if (key.isReadable()) evh.handle();
+							if (key.isReadable()) 
+								try {evh.handle();} catch (IOException e) {
+									removeChannel((SocketChannel)key.channel());
+									key.cancel();
+								}
 							
 						}
 						selector.selectedKeys().clear();

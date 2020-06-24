@@ -1,4 +1,4 @@
-package wordquizzle.wqclient;
+package wordquizzle.wqclient.cli;
 
 import java.rmi.registry.LocateRegistry;
 import java.rmi.registry.Registry;
@@ -46,27 +46,27 @@ class LoginCommand extends CLICommand {
 		try {
 			String username = scanner.next();
 			String password = scanner.next();
-			Reactor.getReactor().write("login:" + username + ":" + password +
-			                                  ":" + Reactor.getReactor().getUDPPort());
+			CLIReactor.getReactor().write("login:" + username + ":" + password +
+			                                  ":" + CLIReactor.getReactor().getUDPPort());
 		} catch (NoSuchElementException e) {System.err.print("You need to supply a username and a password\n> ");}
 	}	
 }
 
 class FriendListCommand extends CLICommand {
 	public void handle(Scanner scanner) {
-		Reactor.getReactor().write("lista_amici");
+		CLIReactor.getReactor().write("lista_amici");
 	}
 }
 
 class LeaderboardCommand extends CLICommand {
 	public void handle(Scanner scanner) {
-		Reactor.getReactor().write("mostra_classifica");
+		CLIReactor.getReactor().write("mostra_classifica");
 	}
 }
 
 class ScoreCommand extends CLICommand {
 	public void handle(Scanner scanner) {
-		Reactor.getReactor().write("mostra_punteggio");
+		CLIReactor.getReactor().write("mostra_punteggio");
 	}
 }
 
@@ -74,7 +74,7 @@ class AddFriendCommand extends CLICommand {
 	public void handle(Scanner scanner) {
 		try {
 			String username = scanner.next();
-			Reactor.getReactor().write("aggiungi_amico:" + username);
+			CLIReactor.getReactor().write("aggiungi_amico:" + username);
 		} catch (NoSuchElementException e) {System.err.print("You need to supply a username\n> ");}
 	}
 }
@@ -83,20 +83,20 @@ class IssueChallengeCommand extends CLICommand {
 	public void handle(Scanner scanner) {
 		try {
 			String username = scanner.next();
-			Reactor.getReactor().write("sfida:" + username);
+			CLIReactor.getReactor().write("sfida:" + username);
 		} catch (NoSuchElementException e) {System.err.print("You need to supply a username\n> ");}
 	}
 }
 
 class AcceptChallengeCommand extends CLICommand {
 	public void handle(Scanner scanner) {
-		Reactor.getReactor().write("yes");
+		CLIReactor.getReactor().write("yes");
 	}
 }
 
 class RejectChallengeCommand extends CLICommand {
 	public void handle(Scanner scanner) {
-		Reactor.getReactor().write("no");
+		CLIReactor.getReactor().write("no");
 		System.out.print("You have rejected the invitation\n> ");
 	}
 }
@@ -104,7 +104,7 @@ class RejectChallengeCommand extends CLICommand {
 class SendWordCommand extends CLICommand {
 	public void handle(Scanner scanner) {
 		try {
-			String word = scanner.next();
+			String word = scanner.nextLine().trim();
 			switch(word) {
 				case "!quit":
 					System.exit(0);
@@ -113,14 +113,14 @@ class SendWordCommand extends CLICommand {
 					new LogoutCommand().handle(scanner);
 					return;
 			}
-			Reactor.getReactor().write("word:" + word);
+			CLIReactor.getReactor().write("word:" + word);
 		} catch (NoSuchElementException e) {}
 	}
 }
 
 class LogoutCommand extends CLICommand {
 	public void handle(Scanner scanner) {
-		Reactor.getReactor().write("logout");
+		CLIReactor.getReactor().write("logout");
 	}
 }
 

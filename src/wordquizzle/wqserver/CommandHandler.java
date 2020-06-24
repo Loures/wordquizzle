@@ -2,11 +2,9 @@ package wordquizzle.wqserver;
 
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
-import java.net.InetSocketAddress;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
-import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.NoSuchElementException;
@@ -19,7 +17,6 @@ import wordquizzle.Response;
 import wordquizzle.UserState;
 import wordquizzle.wqserver.Database.UserNotFoundException;
 import wordquizzle.wqserver.User.*;
-import wordquizzle.wqserver.EventHandler;
 
 /**
  * The {@code CommandHandler} abstract class describes how to
@@ -144,6 +141,8 @@ class AddFriendHandler extends CommandHandler {
 				evh.write(Response.USERNOTEXISTS_FAILURE.getCode(name));
 			} catch (AlreadyFriendsException e) {
 				evh.write(Response.ALREADYFRIENDS_FAILURE.getCode(name));
+			} catch (SelfFriendException e) {
+				evh.write(Response.FRIENDSELF_FAILURE.getCode());
 			}
 		} catch (NoSuchElementException e) {
 			evh.write(Response.NOUSERNAME_FAILURE.getCode());
@@ -163,14 +162,14 @@ class IssueChallengeHandler extends CommandHandler {
 			try {
 				User opponent = Database.getDatabase().getUser(name);
 				if (opponent.getState() != UserState.IDLE) {
-					evh.write("User " + name + " can't play right now");
+					evh.write(Response.CANTPLAY_FAILURE.getCode(name));
 					return;
 				}
 				if (!opponent.getFriendList().contains(this.user)) {
-					evh.write("You are not friends with user " + name);
+					evh.write(Response.NOTFRIENDS_FAILURE.getCode(name));
 					return;
 				}
-				String msg = Response.ISSUECHALLENGE.getCode(user.getName()) + "\n";
+				String msg = Response.CHALLENGE_FROM.getCode(user.getName()) + "\n";
 				try {
 					DatagramSocket udpsocket = new DatagramSocket();
 					try {
@@ -192,7 +191,7 @@ class IssueChallengeHandler extends CommandHandler {
 					} catch (Exception e) {e.printStackTrace();}
 					finally {udpsocket.close();}
 				} catch (Exception e) {e.printStackTrace();}
-			} catch (UserNotFoundException e) {evh.write(Response.USERNOTEXISTS_FAILURE.getCode());}
+			} catch (UserNotFoundException e) {evh.write(Response.USERNOTEXISTS_FAILURE.getCode(name));}
 		} catch (NoSuchElementException e) {evh.write(Response.NOUSERNAME_FAILURE.getCode());}
 	}
 }
@@ -205,7 +204,7 @@ class HasWordCommandHandler extends CommandHandler {
 	public void handle(Scanner scanner) {
 		try {
 			String word = scanner.next();
-			user.getChallenge().hasWord(user, word);
+			user.getChallenge().receiveWord(user, word);
 		} catch (NoSuchElementException e) {}
 	}	
 }

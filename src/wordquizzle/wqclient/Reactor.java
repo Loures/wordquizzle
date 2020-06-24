@@ -3,7 +3,6 @@ package wordquizzle.wqclient;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
-import java.nio.channels.ByteChannel;
 import java.nio.channels.CancelledKeyException;
 import java.nio.channels.ClosedSelectorException;
 import java.nio.channels.DatagramChannel;
@@ -12,76 +11,13 @@ import java.nio.channels.SelectionKey;
 import java.nio.channels.Selector;
 import java.nio.channels.SocketChannel;
 import java.nio.charset.StandardCharsets;
-import java.util.NoSuchElementException;
-import java.util.Scanner;
-
-import javax.xml.crypto.Data;
-
-import wordquizzle.Response;
-import wordquizzle.UserState;
 
 /**
  * Handles all UDP and TCP traffic on behalf of the client
  */
-public class Reactor extends Thread {
+public abstract class Reactor extends Thread {
 
-	public static void handleRead(String msg) {
-		Scanner scannerstub = new Scanner(msg);
-		Scanner scanner = scannerstub.useDelimiter(":");
-		String code = scanner.next();
-		switch (code) {
-			// SET_STATE handling
-			case "SET_STATE":
-				String newState = scanner.next();
-				switch (newState) {
-					case "OFFLINE":
-						WQClient.state = UserState.OFFLINE;
-						break;
-					case "IDLE":
-						WQClient.state = UserState.IDLE;
-						break;
-					case "CHALLENGE_ISSUED":
-						WQClient.state = UserState.CHALLENGE_ISSUED;
-						break;
-					case "CHALLENGED":
-						WQClient.state = UserState.CHALLENGED;
-						break;
-					case "IN_GAME":
-						WQClient.state = UserState.IN_GAME;
-						break;
-				}
-				break;
-			case "WAITING_RESPONSE":
-				System.out.println(Response.WAITINGRESPONSE.getResponse());
-				break;
-			case "ADDFRIEND_SUCCESS":
-				String name1 = scanner.next();
-				String name2 = scanner.next();
-				System.out.print(Response.ADDFRIEND_SUCCESS.getResponse(name1, name2) + "\n> ");
-				break;
-			case "GAME_RESULT":
-				int correct = scanner.nextInt();
-				int wrong = scanner.nextInt();
-				int points = scanner.nextInt();
-				System.out.print(Response.GAME_RESULT.getResponse(correct, wrong, points) + "\n> ");
-				break;
-			default:
-				try {
-					//Parse response that requires only one argument
-					String arg = scanner.next();
-					System.out.print(Response.valueOf(code).getResponse(arg) + "\n> ");
-				} catch (NoSuchElementException e) {
-					try {
-						//Response that requires no argument
-						System.out.print(Response.valueOf(code).getResponse() + "\n> ");
-					} catch (IllegalArgumentException e1) {
-						//Everything else
-						System.out.print(msg + "\n> ");
-					}
-				}
-				break;
-		}
-	}
+	public abstract void handleRead(String msg);
 	
 	private static ByteBuffer rbuff;
 	private static ByteBuffer udp_rbuff;
@@ -91,9 +27,9 @@ public class Reactor extends Thread {
 	private static Selector sel;
 	private static SocketChannel tcpchannel;
 	private static DatagramChannel udpchannel;
-	private static Reactor reactor = null;
+	protected static Reactor reactor = null;
 
-	private Reactor(InetSocketAddress addr) {
+	protected Reactor(InetSocketAddress addr) {
 		try {
 			sel = Selector.open();
 			tcpchannel = SocketChannel.open(addr);
@@ -109,21 +45,15 @@ public class Reactor extends Thread {
 		} catch (Exception e) {e.printStackTrace();}
 	}
 
-	public static Reactor getReactor(InetSocketAddress addr) {
-		if (reactor == null) {
-			reactor = new Reactor(addr);
-			reactor.start();
-		}
-		return reactor;
-	}
-
 	public static Reactor getReactor() {
 		return reactor;
 	}
 
 	public synchronized void write(byte[] data) {
-		tcpkey.interestOps(SelectionKey.OP_READ | SelectionKey.OP_WRITE);
-		wbuff.put(data);
+		try {
+			tcpkey.interestOps(SelectionKey.OP_READ | SelectionKey.OP_WRITE);
+			wbuff.put(data);
+		} catch (CancelledKeyException e) {/*silently fail*/}
 
 		//Wake up the selector
 		sel.wakeup();

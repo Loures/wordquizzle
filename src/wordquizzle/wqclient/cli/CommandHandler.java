@@ -1,11 +1,10 @@
-package wordquizzle.wqclient;
+package wordquizzle.wqclient.cli;
 
 import java.util.NoSuchElementException;
 import java.util.Scanner;
 
 import wordquizzle.Response;
 import wordquizzle.UserState;
-import wordquizzle.wqserver.MessageHandler;
 
 public abstract class CommandHandler {
 	public static CommandHandler getHandler(UserState state) {

@@ -43,6 +43,8 @@ public class WQServer {
 			}
 		} else throw new IllegalArgumentException();
 
+		Challenge.loadDictionary();
+		
 		(new Thread() {
 			@Override
 			public void run() {

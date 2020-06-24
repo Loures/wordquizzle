@@ -33,6 +33,14 @@ public class User {
 		}
 	}
 
+	public static class SelfFriendException extends Exception {
+		private static final long serialVersionUID = 1L;
+	
+		public SelfFriendException() {
+			super();
+		}
+	}
+
 	public static class NoHandlerAssignedException extends Exception {
 		private static final long serialVersionUID = 1L;
 
@@ -245,10 +253,11 @@ public class User {
 	 * @throws AlreadyFriendsException if the two users are already friends.
 	 * @throws UserNotFoundException if the user doesn't exist.
 	 */
-	public void addFriend(String name) throws AlreadyFriendsException, UserNotFoundException {
+	public void addFriend(String name) throws AlreadyFriendsException, UserNotFoundException, SelfFriendException {
 		synchronized(friendlist) {
 			User friend = Database.getDatabase().getUser(name);
-			if (!friendlist.containsKey(friend.getName()) && !friend.equals(this)) {
+			if (friend.equals(this)) throw new SelfFriendException();
+			if (!friendlist.containsKey(friend.getName())) {
 				friendlist.put(friend.getName(), friend);
 				Database.getDatabase().updateUser(this);
 			} else throw new AlreadyFriendsException();
@@ -277,19 +286,19 @@ public class User {
 				this.state = state;
 				switch (state) {
 					case OFFLINE:
-					getHandler().write(Response.SETSTATE.getCode("OFFLINE"));
+					getHandler().write(Response.SET_STATE.getCode("OFFLINE"));
 					break;
 					case IDLE:
-					getHandler().write(Response.SETSTATE.getCode("IDLE"));
+					getHandler().write(Response.SET_STATE.getCode("IDLE"));
 					break;
 					case CHALLENGED:
-					getHandler().write(Response.SETSTATE.getCode("CHALLENGED"));
+					getHandler().write(Response.SET_STATE.getCode("CHALLENGED"));
 					break;
 					case CHALLENGE_ISSUED:
-					getHandler().write(Response.SETSTATE.getCode("CHALLENGE_ISSUED"));
+					getHandler().write(Response.SET_STATE.getCode("CHALLENGE_ISSUED"));
 					break;
 					case IN_GAME:
-					getHandler().write(Response.SETSTATE.getCode("IN_GAME"));
+					getHandler().write(Response.SET_STATE.getCode("IN_GAME"));
 					break;
 				}
 			} catch (NoHandlerAssignedException e) {e.printStackTrace();}

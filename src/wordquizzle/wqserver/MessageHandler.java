@@ -106,7 +106,8 @@ class ChallengedMessageHandler extends MessageHandler {
 					evh.getUser().getChallenge().abortChallenge(evh.getUser());
 					break;
 				case "yes":
-					evh.getUser().getChallenge().startChallenge(evh.getUser());
+					//This is done in order to avoid blocking the Reactor
+					new Thread(evh.getUser().getChallenge()).start();
 					break;
 				case "logout":
 					//Handle the challenge request abort too

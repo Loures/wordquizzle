@@ -1,14 +1,12 @@
 package wordquizzle.wqserver;
 
 import wordquizzle.Logger;
-import wordquizzle.Response;
 import wordquizzle.UserState;
 
 import java.io.IOException;
-import java.net.InetAddress;
 import java.net.InetSocketAddress;
-import java.net.SocketAddress;
 import java.nio.ByteBuffer;
+import java.nio.channels.CancelledKeyException;
 import java.nio.channels.SelectionKey;
 import java.nio.channels.SocketChannel;
 import java.nio.charset.StandardCharsets;
@@ -41,8 +39,10 @@ public class EventHandler {
 	 * @param data the data to write.
 	 */
 	public synchronized void write(byte[] data) {
-		key.interestOps(SelectionKey.OP_READ | SelectionKey.OP_WRITE);
-		wbuff.put(data);
+		try {
+			key.interestOps(SelectionKey.OP_READ | SelectionKey.OP_WRITE);
+			wbuff.put(data);
+		} catch (CancelledKeyException e) {/*silently fail*/}
 
 		//Wake up the selector
 		reactor.getSelector().wakeup();
@@ -119,7 +119,7 @@ public class EventHandler {
 			
 			//If the user was logged in log him out
 			if (this.user != null) {
-				if (this.user.getState() == UserState.CHALLENGE_ISSUED)
+				if (this.user.getState() == UserState.CHALLENGE_ISSUED || this.user.getState() == UserState.IN_GAME)
 					this.user.getChallenge().abortChallenge(this.user);
 				this.user.logout();
 			}
