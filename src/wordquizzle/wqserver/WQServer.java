@@ -1,6 +1,7 @@
 package wordquizzle.wqserver;
 
 import wordquizzle.Logger;
+
 import java.util.Random;
 
 public class WQServer {
@@ -56,8 +57,10 @@ public class WQServer {
 			}
 		}).start();
 		
-		Reactor.reactors = new Reactor[Runtime.getRuntime().availableProcessors()];
-		for (int i = 0; i < Runtime.getRuntime().availableProcessors(); i++) {
+		new RegisterServerHandler().initHandler(port - 1);
+
+		Reactor.reactors = new Reactor[1];
+		for (int i = 0; i < 1; i++) {
 			Reactor.reactors[i] = new Reactor();
 			Reactor.reactors[i].start();
 		}

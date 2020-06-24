@@ -53,6 +53,8 @@ public class Database {
 			//Read the JSON file and parse it, create it if it doesn't exist.
 			dbfile = Paths.get("./database.json");
 			if (!Files.exists(dbfile)) Files.createFile(dbfile);
+
+			//Store all of the DB on memory, this can get extremely costly but it will do for the project's purposes.
 			Gson gson = getDBGson();
 			Collection<User> userlist = gson.fromJson(new String(Files.readAllBytes(dbfile)),
 			                                          new TypeToken<Collection<User>>(){}.getType());
@@ -66,11 +68,12 @@ public class Database {
 	 * Return the database singleton
 	 * @return database singleton
 	 */
-	public static synchronized Database getDatabase() {
+	public static Database getDatabase() {
 		if (database == null) {
 			synchronized(Database.class) {
 				if (database == null) {
 					database = new Database();
+					//Now that the database has been loaded, replace the friendlist User stub with the real ones
 					database.initFriendshipRelations();
 				}
 			}
@@ -93,7 +96,7 @@ public class Database {
 	 * Updates (inserts if it doesn't exist) a user "row" inside the database.
 	 * @param user the user to update.
 	 */
-	public void updateUser(User user) {
+	public synchronized void updateUser(User user) {
 		try {
 			backend.put(user.getName(), user);
 			BufferedWriter writer = Files.newBufferedWriter(dbfile, StandardCharsets.UTF_8);

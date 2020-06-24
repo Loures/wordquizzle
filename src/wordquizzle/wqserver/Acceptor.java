@@ -40,7 +40,6 @@ public class Acceptor {
 			selector = Selector.open();
 			serverChannel.register(selector, SelectionKey.OP_ACCEPT);
 		} catch (final IOException e) {
-			Logger.logErr(e.toString());
 			e.printStackTrace();
 			System.exit(1);
 			return;
@@ -61,7 +60,6 @@ public class Acceptor {
 				}
 				selector.selectedKeys().clear();
 			} catch (final IOException e) {
-				Logger.logErr(e.toString());
 				e.printStackTrace();
 				System.exit(1);
 				return;
@@ -74,12 +72,8 @@ public class Acceptor {
 	 */
 	public void close() {
 		try {
-			Logger.logInfo("Closed ", serverChannel, " and ", selector);
 			serverChannel.close();
 			selector.close();
-		} catch (final IOException e) {
-			Logger.logErr(e.toString());
-			e.printStackTrace();
-		}
+		} catch (final IOException e) {e.printStackTrace();}
 	}
 }

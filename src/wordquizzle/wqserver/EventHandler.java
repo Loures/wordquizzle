@@ -1,8 +1,13 @@
 package wordquizzle.wqserver;
 
 import wordquizzle.Logger;
+import wordquizzle.Response;
+import wordquizzle.UserState;
 
 import java.io.IOException;
+import java.net.InetAddress;
+import java.net.InetSocketAddress;
+import java.net.SocketAddress;
 import java.nio.ByteBuffer;
 import java.nio.channels.SelectionKey;
 import java.nio.channels.SocketChannel;
@@ -12,10 +17,11 @@ import java.nio.charset.StandardCharsets;
 /**
  * The {@code EventHandler} abstract class describes how TCP reading/wriging is handled inside a reactor.
  */
-public abstract class EventHandler {
+public class EventHandler {
 	private ByteBuffer rbuff;
 	private ByteBuffer wbuff;
 	private Reactor reactor;
+	private User user;
 	protected SelectionKey key;
 	protected SocketChannel channel;
 	
@@ -29,24 +35,6 @@ public abstract class EventHandler {
 		this.key = key;
 		this.channel = (SocketChannel)key.channel();
 	}
-
-	/**
-	 * Constructs the event handler whilst carrying over the previous event handler's write buffer.
-	 * @param key      the selection key to which the event handler is assigned.
-	 * @param prevbuff the previous event handler's write buffer.
-	 */
-	public EventHandler(SelectionKey key, ByteBuffer prevbuff) {
-		this.rbuff = ByteBuffer.allocate(4096);
-		this.wbuff = prevbuff;
-		this.key = key;
-		this.channel = (SocketChannel)key.channel();
-	}
-
-	/**
-	 * Compute the received message
-	 * @param msg the received message
-	 */
-	protected abstract void compute(String msg);
 
 	/**
 	 * Write data to the buffer.
@@ -85,6 +73,22 @@ public abstract class EventHandler {
 		key.attach(this);
 	}
 
+	public void setUser(User user) {
+		this.user = user;
+	}
+
+	public User getUser() {
+		return this.user;
+	}
+
+	public InetSocketAddress getLocalAddress() {
+		try {
+
+			return (InetSocketAddress)this.channel.getLocalAddress();
+		} catch (IOException e) {};
+		return null;
+	}
+
 	/**
 	 * Returns the reactor assigned to the handler.
 	 * @return the reactor assigned to the handler.
@@ -112,13 +116,15 @@ public abstract class EventHandler {
 	public void handle() throws IOException {
 		//shutdown the connection
 		if(channel.read(rbuff) < 0) {
-			//If the user is logged in then log him out.
-			if (this instanceof LoggedInEventHandler) {
-				LoggedInEventHandler LoggedInEventHandler = (LoggedInEventHandler)this;
-				LoggedInEventHandler.getUser().logout();
+			
+			//If the user was logged in log him out
+			if (this.user != null) {
+				if (this.user.getState() == UserState.CHALLENGE_ISSUED)
+					this.user.getChallenge().abortChallenge(this.user);
+				this.user.logout();
 			}
 
-			Logger.logInfo("Bye ", channel.getRemoteAddress());
+			Logger.logInfo(channel.getRemoteAddress(), " disconnected");
 			reactor.removeChannel(channel);
 			channel.close();
 			key.cancel();
@@ -137,8 +143,8 @@ public abstract class EventHandler {
 				int sep = str.indexOf("\n");
 
 				//the key's EventHandler could've changed in the meantime
-				EventHandler evh = (EventHandler)key.attachment();
-				if (sep > 0) evh.compute(str.substring(0, sep));
+				MessageHandler msgHandler = MessageHandler.getHandler(this.user);
+				if (sep > 0) msgHandler.startCompute(str.substring(0, sep), this);
 				
 				str = str.substring(sep + 1, str.length());
 			}

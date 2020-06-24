@@ -4,10 +4,17 @@ import java.lang.reflect.Type;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 
 import com.google.gson.*;
+
+import wordquizzle.Response;
+import wordquizzle.UserState;
+
 import wordquizzle.wqserver.Database.UserNotFoundException;
 
 /**
@@ -22,6 +29,14 @@ public class User {
 		private static final long serialVersionUID = 1L;
 	
 		public AlreadyFriendsException() {
+			super();
+		}
+	}
+
+	public static class NoHandlerAssignedException extends Exception {
+		private static final long serialVersionUID = 1L;
+
+		public NoHandlerAssignedException() {
 			super();
 		}
 	}
@@ -52,11 +67,11 @@ public class User {
 			JsonObject obj = json.getAsJsonObject();
 			JsonArray json_friendlist = obj.getAsJsonArray("friendlist");
 			LinkedList<User> friendlist = new LinkedList<>();
-			//Build a preliminary friend list
+			//Build a preliminary friend list with a stub User
 			for (JsonElement elem : json_friendlist) {
-				User fakeuser = new User();
-				fakeuser.setName(elem.getAsString());
-				friendlist.add(fakeuser);
+				User userstub = new User();
+				userstub.setName(elem.getAsString());
+				friendlist.add(userstub);
 			}
 			User user = new User(obj.getAsJsonPrimitive("name").getAsString(),
 			                     obj.getAsJsonPrimitive("password").getAsString(),
@@ -85,16 +100,18 @@ public class User {
 	private String name = "";
 	private String password = "";
 	private int score = 0;
-	private List<User> friendlist;
-	private boolean logged = false;
-
-	private LoggedInEventHandler handler;
+	private ConcurrentMap<String, User> friendlist;
+	private UserState state = UserState.OFFLINE;
+	private EventHandler handler = null;
+	private Object challengeLock = new Object();
+	private Challenge challenge = null;
+	private int udpPort = 0;
 
 	/**
 	 * Constructs an empty User.
 	 */
 	public User() {
-		this.friendlist = new LinkedList<>();
+		this.friendlist = new ConcurrentHashMap<>();
 	}
 	
 	/**
@@ -108,7 +125,8 @@ public class User {
 		this.name = name;
 		this.password = password;
 		this.score = score;
-		this.friendlist = new LinkedList<>(friendlist);
+		this.friendlist = new ConcurrentHashMap<>();
+		friendlist.forEach((User user) -> this.friendlist.put(user.getName(), user));
 	}
 
 	/**
@@ -124,6 +142,15 @@ public class User {
 	 */
 	public void setName(String name) {
 		this.name = name;
+	}
+
+	public void setHandler(EventHandler handler) {
+		this.handler = handler;
+	}
+
+	public EventHandler getHandler() throws NoHandlerAssignedException {
+		if (this.handler != null) return this.handler;
+		else throw new NoHandlerAssignedException();
 	}
 
 	/**
@@ -189,26 +216,43 @@ public class User {
 		Database.getDatabase().updateUser(this);
 	}
 
+	/*
+	From https://docs.oracle.com/javase/8/docs/api/java/util/concurrent/ConcurrentHashMap.html
+
+	Iterators are designed to be used by only one thread at a time.
+	Bear in mind that the results of aggregate status methods
+	including size, isEmpty, and containsValue are typically useful only when
+	a map is not undergoing concurrent updates in other threads.
+	Otherwise the results of these methods reflect transient states
+	that may be adequate for monitoring or estimation purposes, but not for program control.
+	*/
+
 	/**
 	 * Returns the user's friend list.
 	 * @return the user's friend list.
 	 */
-	public synchronized List<User> getFriendList() {
-		return new LinkedList<User>(friendlist);
+	public List<User> getFriendList() {
+		//Must wait for an addFriend operation to finish and release the monitor
+		//in order to keep the friendlist consistent.
+		synchronized(friendlist) {
+			return new ArrayList<User>(friendlist.values());
+		}
 	}
-	
+
 	/**
 	 * Adds user with nickname {@code name} to the user's friend list.
 	 * @param name name of the user to add to the friend list
 	 * @throws AlreadyFriendsException if the two users are already friends.
 	 * @throws UserNotFoundException if the user doesn't exist.
 	 */
-	public synchronized void addFriend(String name) throws AlreadyFriendsException, UserNotFoundException {
-		User friend = Database.getDatabase().getUser(name);
-		if (!friendlist.contains(friend) && !friend.equals(this)) {
-			friendlist.add(friend);
-			Database.getDatabase().updateUser(this);
-		} else throw new AlreadyFriendsException();
+	public void addFriend(String name) throws AlreadyFriendsException, UserNotFoundException {
+		synchronized(friendlist) {
+			User friend = Database.getDatabase().getUser(name);
+			if (!friendlist.containsKey(friend.getName()) && !friend.equals(this)) {
+				friendlist.put(friend.getName(), friend);
+				Database.getDatabase().updateUser(this);
+			} else throw new AlreadyFriendsException();
+		}
 	}
 
 	/**
@@ -216,54 +260,79 @@ public class User {
 	 * @throws AlreadyFriendsException if the friend list contains the user itself.
 	 */
 	public void initFriendshipRelations() throws AlreadyFriendsException {
-		for (int i = 0; i < friendlist.size(); i++) {
+		synchronized(friendlist) {
+			for (User user : friendlist.values()) {
+				try {
+					User friend = Database.getDatabase().getUser(user.getName());
+					if (friendlist.remove(friend.getName(), this)) throw new AlreadyFriendsException();
+					friendlist.put(friend.getName(), friend);
+				} catch (UserNotFoundException e) {/*discard*/};
+			}
+		}
+	}
+
+	public void setState(UserState state) {
+		synchronized(this.state) {
 			try {
-				User friend = Database.getDatabase().getUser(friendlist.get(i).getName());
-				if (friend.equals(this)) {
-					friendlist.remove(i);
-					throw new AlreadyFriendsException();
+				this.state = state;
+				switch (state) {
+					case OFFLINE:
+					getHandler().write(Response.SETSTATE.getCode("OFFLINE"));
+					break;
+					case IDLE:
+					getHandler().write(Response.SETSTATE.getCode("IDLE"));
+					break;
+					case CHALLENGED:
+					getHandler().write(Response.SETSTATE.getCode("CHALLENGED"));
+					break;
+					case CHALLENGE_ISSUED:
+					getHandler().write(Response.SETSTATE.getCode("CHALLENGE_ISSUED"));
+					break;
+					case IN_GAME:
+					getHandler().write(Response.SETSTATE.getCode("IN_GAME"));
+					break;
 				}
-				else friendlist.set(i, friend);
-			} catch (UserNotFoundException e) {/*discard*/};
+			} catch (NoHandlerAssignedException e) {e.printStackTrace();}
+		}
+	}
+
+	public UserState getState() {
+		synchronized(this.state) {
+			return this.state;
+		}
+	}
+
+	public void setChallenge(Challenge challenge) {
+		synchronized(challengeLock) {
+			this.challenge = challenge;
+		}
+	}
+
+	public Challenge getChallenge() {
+		synchronized(challengeLock) {
+			return this.challenge;
 		}
 	}
 
 	/**
 	 * Sets the user's status as logged in.
 	 */
-	public synchronized void login() {
-		this.logged = true;
+	public void login(int port) {
+		setState(UserState.IDLE);
+		this.udpPort = port;
 	}
 
 	/**
 	 * Sets the user's status as logged out.
 	 */
-	public synchronized void logout() {
-		this.handler = null;
-		this.logged = false;
+	public void logout() {
+		setState(UserState.OFFLINE);
+		setChallenge(null);
+		setHandler(null);
 	}
 
-	/**
-	 * returns {@code true} iff the user is logged in.
-	 * @return {@code true} iff the user is logged in.
-	 */
-	public synchronized boolean isOnline() {
-		return this.logged;
-	}
-
-	/**
-	 * Sets the user's current event handler.
-	 * @param handler the user's new event handler.
-	 */
-	public void setHandler(LoggedInEventHandler handler) {
-		this.handler = handler;
-	}
-	/**
-	 * Returns the user's current event handler.
-	 * @return the user's current event handler.
-	 */
-	public LoggedInEventHandler getHandler() {
-		return handler;
+	public int getUDPPort() {
+		return udpPort;
 	}
 
 	/**

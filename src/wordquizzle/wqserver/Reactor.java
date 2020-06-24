@@ -98,7 +98,7 @@ public class Reactor extends Thread {
 			if ((channel = queue.poll(25, TimeUnit.MILLISECONDS)) != null) {
 				SelectionKey key = channel.register(selector, SelectionKey.OP_READ);
 				channels.add(channel);
-				EventHandler evh = (EventHandler)new DefaultEventHandler(key);
+				EventHandler evh = new EventHandler(key);
 				evh.registerHandler(this);
 				key.attach(evh);
 			}
@@ -123,7 +123,6 @@ public class Reactor extends Thread {
 							if (key.isReadable()) evh.handle();
 							
 						}
-						System.out.println(this);
 						selector.selectedKeys().clear();
 					}
 				}
