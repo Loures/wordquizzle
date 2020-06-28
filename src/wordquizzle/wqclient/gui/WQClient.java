@@ -1,16 +1,32 @@
-package wordquizzle.wqclient.cli;
+package wordquizzle.wqclient.gui;
 
 import java.net.InetSocketAddress;
 import java.util.Arrays;
 import java.util.Random;
 
+import javax.swing.JFrame;
+
 import wordquizzle.Logger;
 import wordquizzle.UserState;
 
 public class WQClient {
+	
+
 	private static int port;
 	private static String addr;
+	public static String name;
+	private static JFrame currentActiveFrame;
 	public static UserState state = UserState.OFFLINE;
+
+	public static void setActiveFrame(JFrame frame) {
+		if (currentActiveFrame != null) currentActiveFrame.setEnabled(false);
+		currentActiveFrame = frame;
+		frame.setEnabled(true);
+	}
+
+	public static JFrame getActiveFrame() {
+		return currentActiveFrame;
+	}
 
 	//Taken from https://www.techiedelight.com/validate-ip-address-java/
 	public static boolean isValidInet4Address(String ip)
@@ -22,36 +38,23 @@ public class WQClient {
 
 		try {
 			return Arrays.stream(groups)
-						.map(Integer::parseInt)
-						.filter(i -> (i >= 0 && i <= 255))
-						.count() == 4;
+			.map(Integer::parseInt)
+			.filter(i -> (i >= 0 && i <= 255))
+			.count() == 4;
+
 
 		} catch(NumberFormatException e) {
 			return false;
 		}
 	}
 
-	public static void printHelp() {
-		System.out.print("usage: wordquizzle.wqclient.cli.WQClient <ip> <port>\n\n"
-		+ "commands:\n"
-		+ "    register <username> <password>: registra utente\n"
-		+ "    login <username> <password>: login utente\n"
-		+ "    aggingi_amico <username>: aggiungi un amico\n"
-		+ "    sfida <username>: sfida un amico\n"
-		+ "    lista_amici: stampa lista amici utente\n"
-		+ "    mostra_punteggio: mostra punteggio dell'utente\n"
-		+ "    mostra_classifica: mostra classifica amici dell'utente\n");
-	}
-
 	public static void main(final String[] args) {
-
+		
 		class Shutdown extends Thread {
 			@Override
 			public void run() {
-				//Log the user out and close the reactor
-				if (state != UserState.OFFLINE) new LogoutCommand().handle(null);
-				if (CLIReactor.getReactor() != null) CLIReactor.getReactor().close();
-
+				if (state != UserState.OFFLINE) new LogoutCommand().handle();
+				if (GUIReactor.getReactor() != null) GUIReactor.getReactor().close();
 				Random rand = new Random(System.nanoTime());
 				switch(rand.nextInt(3)) {
 					case 0:
@@ -71,10 +74,6 @@ public class WQClient {
 
 		//Check for correct port argument
 		if (args.length > 0) {
-			if (args[0].equals("--help") || args[0].equals("-h")) {
-				printHelp();
-				return;
-			}
 			try {
 				addr = args[0];
 				if (!isValidInet4Address(addr)) {
@@ -88,18 +87,13 @@ public class WQClient {
 				return;
 			}
 		} else {
-			printHelp();
+			System.out.println("usage: wordquizzle.wqclient.gui.WQClient <ip> <port>");
 			return;
 		}
 
 		//Create the reactor
-		CLIReactor.getReactor(new InetSocketAddress(addr, port));
-		
-		//Start the CLI prompt
-		System.out.print("> ");
-		while (!Thread.interrupted()) {
-			String line = System.console().readLine();
-			CommandHandler.getHandler(state).startCompute(line);
-		}
+		GUIReactor.getReactor(new InetSocketAddress(addr, port));
+
+		WQClient.setActiveFrame(LoginFrame.createFrame());
 	}
 }

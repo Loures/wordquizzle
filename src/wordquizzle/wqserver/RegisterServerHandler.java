@@ -20,6 +20,7 @@ public class RegisterServerHandler extends RemoteServer implements WQRegisterInt
 		Matcher nameMatcher = regexp.matcher(name);
 		Matcher pwMatcher = regexp.matcher(password);
 
+		//Username and password must contain numbers and letters only.
 		if (!nameMatcher.find() || !nameMatcher.group(1).equals(name)) throw new UsernameNotValid();
 		if (!pwMatcher.find() || !pwMatcher.group(1).equals(password)) throw new PasswordNotValid();
 

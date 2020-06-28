@@ -13,10 +13,11 @@ import java.nio.channels.SocketChannel;
 import java.nio.charset.StandardCharsets;
 
 /**
- * Handles all UDP and TCP traffic on behalf of the client
+ * The {@code Reactor} abstract class handles all UDP and TCP traffic on behalf of the client
  */
 public abstract class Reactor extends Thread {
 
+	//What to do with received messages
 	public abstract void handleRead(String msg);
 	
 	private static ByteBuffer rbuff;
@@ -31,24 +32,35 @@ public abstract class Reactor extends Thread {
 
 	protected Reactor(InetSocketAddress addr) {
 		try {
+			//Create the selector, the TCP and UDP sockets and the relevant buffers
 			sel = Selector.open();
-			tcpchannel = SocketChannel.open(addr);
+			tcpchannel = SocketChannel.open();
+			tcpchannel.connect(addr);
+			if (tcpchannel.isConnected()) System.out.println("Connected to WordQuizzle server.");
 			tcpchannel.configureBlocking(false);
 			tcpkey = tcpchannel.register(sel, SelectionKey.OP_READ);
 			udpchannel = DatagramChannel.open();
-			udpchannel.bind(new InetSocketAddress(addr.getAddress(), 0));
+			udpchannel.bind(new InetSocketAddress("127.0.0.1", 0));
 			udpchannel.configureBlocking(false);
 			udpkey = udpchannel.register(sel, SelectionKey.OP_READ);
 			rbuff = ByteBuffer.allocate(4096);
 			wbuff = ByteBuffer.allocate(4096);
 			udp_rbuff = ByteBuffer.allocate(4096);
-		} catch (Exception e) {e.printStackTrace();}
+		} catch (Exception e) {
+			e.printStackTrace();
+			System.exit(1);
+			return;
+		}
 	}
 
 	public static Reactor getReactor() {
 		return reactor;
 	}
 
+	/**
+	 * Write a byte array to the TCP socket.
+	 * @param data the byte array to write.
+	 */
 	public synchronized void write(byte[] data) {
 		try {
 			tcpkey.interestOps(SelectionKey.OP_READ | SelectionKey.OP_WRITE);
@@ -60,13 +72,17 @@ public abstract class Reactor extends Thread {
 	}
 	
 	/**
-	 * Write data to the buffer.
-	 * @param data the data to write.
+	 * Write a string to the buffer.
+	 * @param data the string to write.
 	 */
 	public void write(String data) {
 		write(new String(data + "\n").getBytes(StandardCharsets.UTF_8));
 	}
 
+	/**
+	 * Get the UDP port picked randomply by the bind method.
+	 * @return the UDP port.
+	 */
 	public int getUDPPort() {
 		try {
 			return ((InetSocketAddress)udpchannel.getLocalAddress()).getPort();

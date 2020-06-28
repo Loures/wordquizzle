@@ -280,6 +280,10 @@ public class User {
 		}
 	}
 
+	/**
+	 * Sets the user's new state and sends the new state to the client.
+	 * @param state the user's new state
+	 */
 	public void setState(UserState state) {
 		synchronized(this.state) {
 			try {
@@ -301,22 +305,37 @@ public class User {
 					getHandler().write(Response.SET_STATE.getCode("IN_GAME"));
 					break;
 				}
-			} catch (NoHandlerAssignedException e) {e.printStackTrace();}
+			} catch (NoHandlerAssignedException e) {
+				/*The user disconnected, fail silently...*/
+				this.state = UserState.OFFLINE;
+			}
 		}
 	}
 
+	/**
+	 * Returns the user's current state.
+	 * @return the user's current state.
+	 */
 	public UserState getState() {
 		synchronized(this.state) {
 			return this.state;
 		}
 	}
 
+	/**
+	 * Assigns the user to a challenge.
+	 * @param challenge the challenge to assign the user to.
+	 */
 	public void setChallenge(Challenge challenge) {
 		synchronized(challengeLock) {
 			this.challenge = challenge;
 		}
 	}
 
+	/**
+	 * Returns the challenge assigned to the user.
+	 * @return the challenge assigned to the user.
+	 */
 	public Challenge getChallenge() {
 		synchronized(challengeLock) {
 			return this.challenge;
@@ -340,6 +359,16 @@ public class User {
 		setHandler(null);
 	}
 
+	public void logoutNoNotify() {
+		this.state = UserState.OFFLINE;
+		setChallenge(null);
+		setHandler(null);
+	}
+
+	/**
+	 * Returns the UDP port the user sent in after logging in.
+	 * @return the UDP port the user sent in after logging in.
+	 */
 	public int getUDPPort() {
 		return udpPort;
 	}

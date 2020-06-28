@@ -1,7 +1,9 @@
 package wordquizzle.wqserver;
 
 import wordquizzle.Logger;
+import wordquizzle.WQRegisterInterface;
 
+import java.io.FileNotFoundException;
 import java.util.Random;
 
 public class WQServer {
@@ -43,30 +45,24 @@ public class WQServer {
 			}
 		} else throw new IllegalArgumentException();
 
-		Challenge.loadDictionary();
+		//load the challenge dictionary
+		try {Challenge.loadDictionary();}
+		catch (FileNotFoundException e) {
+			Logger.logErr("Dictionary not found, exiting...");
+			System.exit(1);
+		}
 		
-		(new Thread() {
-			@Override
-			public void run() {
-				while (!Thread.interrupted()) {
-					String line = System.console().readLine();
-					if (line.trim().toLowerCase().equals("quit")) System.exit(0);
-					try {
+		//Initialize the RMI registry
+		new RegisterServerHandler().initHandler(WQRegisterInterface.port);
 
-						Logger.logInfo(Database.getDatabase().getUser(line).checkPassword(line+"password"));
-					} catch (Exception e) {e.printStackTrace();}
-				}
-			}
-		}).start();
-		
-		new RegisterServerHandler().initHandler(port - 1);
-
-		Reactor.reactors = new Reactor[1];
-		for (int i = 0; i < 1; i++) {
+		//Start up all the reactors
+		Reactor.reactors = new Reactor[4];
+		for (int i = 0; i < Reactor.reactors.length; i++) {
 			Reactor.reactors[i] = new Reactor();
 			Reactor.reactors[i].start();
 		}
 
+		//Start up the connection acceptor
 		Acceptor acceptor = Acceptor.getAcceptor();
 		acceptor.start(port);
 

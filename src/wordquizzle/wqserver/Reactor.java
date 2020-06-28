@@ -94,7 +94,9 @@ public class Reactor extends Thread {
 	private void handleChannelRegistration() {
 		SocketChannel channel;
 		try {
+			//Wait for 25ms for something to appear in the queue
 			if ((channel = queue.poll(25, TimeUnit.MILLISECONDS)) != null) {
+				//Register the channel with the reactor.
 				SelectionKey key = channel.register(selector, SelectionKey.OP_READ);
 				channels.add(channel);
 				EventHandler evh = new EventHandler(key);
@@ -110,7 +112,10 @@ public class Reactor extends Thread {
 	public void run() {
 		while (!Thread.interrupted()) {
 			try {
+				//Check if there's channels awaiting registration with the reactor.
 				handleChannelRegistration();
+
+				//If there's AT LEAST one channel registered with the reactor go on and do work.
 				if (!channels.isEmpty()) {
 						selector.select();
 						for (SelectionKey key : selector.selectedKeys()) {

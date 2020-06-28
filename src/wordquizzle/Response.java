@@ -8,6 +8,9 @@ public enum Response {
 	QUIT_CHALLENGE			("QUIT_CHALLENGE:%s", "User %s has quit the challenge"),
 	BEGIN_CHALLENGE         ("BEGIN_CHALLENGE", "Let the challenge begin"),
 	SEND_WORD               ("SEND_WORD:%d:%d:%s", "Word %d of %d: %s"),
+	FRIENDLIST              ("FRIENDLIST:%s", ""),
+	LEADERBOARD             ("LEADERBOARD:%s", ""),
+	SCORE                   ("SCORE:%d", "Score: %d"),
 	FINISH_CHALLENGE        ("FINISH_CHALLENGE", ""),
 	GAME_FINISHED           ("GAME_FINISHED", "You've answered to all the words and must wait for the opponent to finish"),
 	WINNER                  ("WINNER:%d:%d", "Congratulations you've won! you earned a bonus %d points for a total of %d points"),
@@ -25,7 +28,6 @@ public enum Response {
 	NOTONLINE_FAILURE       ("NOTONLINE_FAILURE:%s", "The user %s is not online"),
 	NOUSERNAME_FAILURE      ("NOUSERNAME_FAILURE", "You must specify a username"),
 	NOUSERPASS_FAILURE      ("NOUSERPASS_FAILURE", "You must specify a username and a password"),
-	USERNAMEEXISTS_FAILURE  ("USERNAMEEXISTS_FAILURE:%s", "A user with username %s already exists"),
 	ALREADYLOGGEDIN_FAILURE ("ALREADYLOGGEDIN_FAILURE:%s", "User %s is already online"),
 	INVALID_COMMAND         ("INVALID_COMMAND", "Invalid command");
 

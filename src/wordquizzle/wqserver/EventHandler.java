@@ -13,7 +13,8 @@ import java.nio.charset.StandardCharsets;
 
 
 /**
- * The {@code EventHandler} abstract class describes how TCP reading/wriging is handled inside a reactor.
+ * The {@code EventHandler} class implements the parsing and dispatching of the various messages to the appropriate
+ * {@code MessageHandler}.
  */
 public class EventHandler {
 	private ByteBuffer rbuff;
@@ -73,14 +74,26 @@ public class EventHandler {
 		key.attach(this);
 	}
 
+	/**
+	 * Assigns a user to the EventHandler.
+	 * @param user the user to assign to the EventHandler.
+	 */
 	public void setUser(User user) {
 		this.user = user;
 	}
 
+	/**
+	 * Returns the user assigned to the EventHandler.
+	 * @return the user assigned to the EventHandler
+	 */
 	public User getUser() {
 		return this.user;
 	}
 
+	/**
+	 * Returns the local address of the EventHandler's channel.
+	 * @return the local address of the EventHandler's channel.
+	 */
 	public InetSocketAddress getLocalAddress() {
 		try {
 
@@ -121,7 +134,7 @@ public class EventHandler {
 			if (this.user != null) {
 				if (this.user.getState() == UserState.CHALLENGE_ISSUED || this.user.getState() == UserState.IN_GAME)
 					this.user.getChallenge().abortChallenge(this.user);
-				this.user.logout();
+				this.user.logoutNoNotify();
 			}
 
 			Logger.logInfo(channel.getRemoteAddress(), " disconnected");

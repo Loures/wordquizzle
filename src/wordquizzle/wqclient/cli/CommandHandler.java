@@ -6,7 +6,13 @@ import java.util.Scanner;
 import wordquizzle.Response;
 import wordquizzle.UserState;
 
+/**
+ * The {@code CommandHandler} abstract class implements an abstract command handler and contains the static factory
+ * method for obtaining the appropriate handler given a user state.
+ */
 public abstract class CommandHandler {
+
+	//Factory method
 	public static CommandHandler getHandler(UserState state) {
 		switch(state) {
 			case OFFLINE:
@@ -33,6 +39,9 @@ public abstract class CommandHandler {
 	public abstract void compute(Scanner scanner);
 }
 
+/**
+ * The {@code DefaultCommandHandler} class implements command handling when we're in an OFFLINE state.
+ */
 class DefaultCommandHandler extends CommandHandler {
 	public void compute(Scanner scanner) {
 		try {
@@ -56,6 +65,9 @@ class DefaultCommandHandler extends CommandHandler {
 	}
 }
 
+/**
+ * The {@code LoggedInCommandHandler} class implements command handling when we're in an IDLE state.
+ */
 class LoggedInCommandHandler extends CommandHandler {
 	public void compute(Scanner scanner) {
 		try {
@@ -91,6 +103,10 @@ class LoggedInCommandHandler extends CommandHandler {
 	}
 }
 
+/**
+ * The {@code ChallengeIssuedCommandHandler} class implements command handling when we're waiting 
+ * for the opponent to accept or reject our challenge request.
+ */
 class ChallengeIssuedCommandHandler extends CommandHandler {
 	public void compute(Scanner scanner) {
 		try {
@@ -111,6 +127,10 @@ class ChallengeIssuedCommandHandler extends CommandHandler {
 	}
 } 
 
+/**
+ * The {@code ChallengedCommandHandler} class implements command handling when we're prompted to 
+ * accept or reject a challenge request.
+ */
 class ChallengedCommandHandler extends CommandHandler {
 	public void compute(Scanner scanner) {
 		try {
@@ -137,6 +157,9 @@ class ChallengedCommandHandler extends CommandHandler {
 	}
 } 
 
+/**
+ * The {@code InGameCommandHandler} class implements command handling when we're in a game.
+ */
 class InGameCommandHandler extends CommandHandler {
 	public void compute(Scanner scanner) {
 		new SendWordCommand().handle(scanner);
