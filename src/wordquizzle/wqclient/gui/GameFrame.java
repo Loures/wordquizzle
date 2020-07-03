@@ -14,7 +14,7 @@ public class GameFrame {
 	public static JTextArea wordArea;
 
 	public static JFrame createFrame() {
-		frame = new JFrame("Sfida");
+		frame = new JFrame("Traduci la parola");
 		frame.setResizable(false);
 		frame.setBounds(screen.width / 2 - 200, screen.height / 2 - 100, 400, 150);
 		frame.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);

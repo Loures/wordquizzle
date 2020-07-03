@@ -40,7 +40,7 @@ public abstract class Reactor extends Thread {
 			tcpchannel.configureBlocking(false);
 			tcpkey = tcpchannel.register(sel, SelectionKey.OP_READ);
 			udpchannel = DatagramChannel.open();
-			udpchannel.bind(new InetSocketAddress("127.0.0.1", 0));
+			udpchannel.bind(new InetSocketAddress("0.0.0.0", 0));
 			udpchannel.configureBlocking(false);
 			udpkey = udpchannel.register(sel, SelectionKey.OP_READ);
 			rbuff = ByteBuffer.allocate(4096);

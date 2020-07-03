@@ -1,7 +1,6 @@
 package wordquizzle.wqserver;
 
 import wordquizzle.Logger;
-import wordquizzle.UserState;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
@@ -46,7 +45,7 @@ public class EventHandler {
 		} catch (CancelledKeyException e) {/*silently fail*/}
 
 		//Wake up the selector
-		reactor.getSelector().wakeup();
+		reactor.wakeup();
 	}
 	
 	/**
@@ -55,14 +54,6 @@ public class EventHandler {
 	 */
 	public void write(String data) {
 		write(new String(data + "\n").getBytes(StandardCharsets.UTF_8));
-	}
-
-	/**
-	 * returns the handler's write buffer.
-	 * @return the handler's write buffer.
-	 */
-	public ByteBuffer getWBuffer() {
-		return wbuff.duplicate();
 	}
 
 	/**
@@ -103,14 +94,6 @@ public class EventHandler {
 	}
 
 	/**
-	 * Returns the reactor assigned to the handler.
-	 * @return the reactor assigned to the handler.
-	 */
-	public Reactor getReactor() {
-		return this.reactor;
-	}
-
-	/**
 	 * Empties the write buffer inside the socket.
 	 * @throws IOException
 	 */
@@ -132,12 +115,11 @@ public class EventHandler {
 			
 			//If the user was logged in log him out
 			if (this.user != null) {
-				if (this.user.getState() == UserState.CHALLENGE_ISSUED || this.user.getState() == UserState.IN_GAME)
-					this.user.getChallenge().abortChallenge(this.user);
 				this.user.logoutNoNotify();
+				Logger.logInfo("User ", this.user.getName(), " disconnected");
 			}
 
-			Logger.logInfo(channel.getRemoteAddress(), " disconnected");
+			Logger.logInfo(channel.getRemoteAddress(), " connection shutdown");
 			reactor.removeChannel(channel);
 			channel.close();
 			key.cancel();
@@ -155,7 +137,6 @@ public class EventHandler {
 			while (!str.isEmpty()) {
 				int sep = str.indexOf("\n");
 
-				//the key's EventHandler could've changed in the meantime
 				MessageHandler msgHandler = MessageHandler.getHandler(this.user);
 				if (sep > 0) msgHandler.startCompute(str.substring(0, sep), this);
 				

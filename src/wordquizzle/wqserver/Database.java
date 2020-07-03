@@ -1,5 +1,6 @@
 package wordquizzle.wqserver;
 
+import wordquizzle.Logger;
 import wordquizzle.wqserver.User.AlreadyFriendsException;
 
 import java.io.BufferedWriter;
@@ -52,7 +53,10 @@ public class Database {
 		try {
 			//Read the JSON file and parse it, create it if it doesn't exist.
 			dbfile = Paths.get("./database.json");
-			if (!Files.exists(dbfile)) Files.createFile(dbfile);
+			if (!Files.exists(dbfile)) {
+				Logger.logInfo("database.json file doesn't exist, creating one");
+				Files.createFile(dbfile);
+			}
 
 			//Store all of the DB on memory, this can get extremely costly but it will do for the project's purposes.
 			Gson gson = getDBGson();

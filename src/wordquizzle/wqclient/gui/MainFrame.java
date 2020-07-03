@@ -14,6 +14,7 @@ public class MainFrame {
 
 	public static void appendLine(String line) {
 		textArea.append(line + "\n");
+		textArea.setCaretPosition(textArea.getDocument().getLength());
 	}
 
 	public static JFrame createFrame() {
@@ -91,6 +92,7 @@ public class MainFrame {
 			public void actionPerformed(ActionEvent e) {
 				new LogoutCommand().handle();
 				frame.dispose();
+				System.exit(0);
 			}
 			
 		});
@@ -101,7 +103,9 @@ public class MainFrame {
 		textArea.setForeground(new Color(68,68,68));
 		textArea.setBounds(196, 0, borderPanel.getWidth() - 196, borderPanel.getHeight());
 		textArea.setEditable(false);
-		borderPanel.add(textArea);
+		JScrollPane scrollPane = new JScrollPane(textArea);
+		scrollPane.setBounds(196, 0, borderPanel.getWidth() - 196, borderPanel.getHeight());
+		borderPanel.add(scrollPane);
 
 		frame.getContentPane().add(borderPanel);
 		frame.repaint();

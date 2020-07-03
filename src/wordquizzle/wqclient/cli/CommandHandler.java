@@ -31,7 +31,7 @@ public abstract class CommandHandler {
 	}
 
 	public void startCompute(String msg) {
-		Scanner scanner = new Scanner(msg);
+		Scanner scanner = new Scanner(msg != null ? msg : "");
 		compute(scanner);
 		scanner.close();
 	}

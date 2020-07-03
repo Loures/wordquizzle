@@ -71,6 +71,7 @@ class LoginHandler extends CommandHandler {
 					evh.setUser(user);
 					user.login(port);
 					evh.write(Response.LOGIN_SUCCESS.getCode(username));
+					Logger.logInfo("User ", username, " logged in succesfully");
 				} else {
 					evh.write(Response.LOGIN_FAILURE.getCode());
 					return;
@@ -95,7 +96,6 @@ class LogoutHandler extends CommandHandler {
 	public void handle(Scanner scanner) {
 		if (user.getState() != UserState.OFFLINE) {
 			user.logout();
-			Logger.logInfo("User ", user.getName(), " disconnected");
 			evh.write("Bye " + user.getName());
 		}
 	}
@@ -217,11 +217,10 @@ class IssueChallengeHandler extends CommandHandler {
 				try {
 					DatagramSocket udpsocket = new DatagramSocket();
 					try {
-
 						//Send out an UDP packet
 						udpsocket.connect(opponent.getHandler().getLocalAddress().getAddress(), opponent.getUDPPort());
 						DatagramPacket pkt = new DatagramPacket(msg.getBytes(StandardCharsets.UTF_8),
-						                                        msg.getBytes(StandardCharsets.UTF_8).length);
+																msg.getBytes(StandardCharsets.UTF_8).length);
 						udpsocket.send(pkt);
 
 						//Set the two players state to "challenged" and to "awaiting response"
@@ -235,6 +234,7 @@ class IssueChallengeHandler extends CommandHandler {
 						Challenge challenge = new Challenge(user, opponent);
 						user.setChallenge(challenge);
 						opponent.setChallenge(challenge);
+						Logger.logInfo("Initiated challenge between ", user.getName(), " and ", opponent.getName());
 
 					} catch (Exception e) {e.printStackTrace();}
 					finally {udpsocket.close();}

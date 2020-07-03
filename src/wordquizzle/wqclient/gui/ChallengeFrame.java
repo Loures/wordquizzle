@@ -27,7 +27,6 @@ public class ChallengeFrame {
 		responseLabel.setForeground(new Color(198, 40, 40));
 		responseLabel.setText(err);
 		responseLabel.setBounds(responseLabelStartPosX - len / 2, responseLabelStartPosY, len, 16);
-
 	}
 
 	public static void showOk(String ok) {
@@ -51,7 +50,7 @@ public class ChallengeFrame {
 	public static JFrame createFrame() {
 		responseLabel.setText("");
 
-		frame = new JFrame("Sfida amico");
+		frame = new JFrame("Sfida un amico");
 		frame.setResizable(false);
 		frame.setBounds(screen.width / 2 - 200, screen.height / 2 - 100, 400, 150);
 		frame.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
@@ -76,7 +75,7 @@ public class ChallengeFrame {
 		nameField.setBounds(nameLabel.getWidth(), 0, inputPanel.getWidth() - nameLabel.getWidth(), 20);
 		inputPanel.add(nameField);
 
-		JButton submitButton = new JButton("Submit");
+		JButton submitButton = new JButton("Sfida");
 		submitButton.setBounds(inputPanel.getWidth() - 150, inputPanel.getHeight() - 30, 150, 30);
 		submitButton.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent e) {
@@ -97,6 +96,7 @@ public class ChallengeFrame {
 			
 		});
 		inputPanel.add(cancelButton);
+		responseLabel.setVisible(true);
 		inputPanel.add(responseLabel);
 		responseLabelStartPosX = inputPanel.getWidth() / 2;
 		responseLabelStartPosY = inputPanel.getHeight() - 60;

@@ -24,6 +24,7 @@ import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 
+import wordquizzle.Logger;
 import wordquizzle.Response;
 import wordquizzle.UserState;
 import wordquizzle.wqserver.User.NoHandlerAssignedException;
@@ -67,6 +68,9 @@ public class Challenge implements Runnable {
 
 	private static final String url = "https://api.mymemory.translated.net/get?q=%s&langpair=it|en";
 	private static final int numWords = 4;
+	private static final int correctAnswerPoints = 2;
+	private static final int wrongAnswerPoints = 1;
+	private static final int winnerPoints = 3;
 	private static final long acceptanceTimeOut = 15L * 1000L;
 	private static final long gameTimeOut = 20L * 1000L;
 	private static List<String> words;
@@ -116,6 +120,7 @@ public class Challenge implements Runnable {
 
 	private ArrayList<String> fetchAndParseJson(String word) {
 		ArrayList<String> translatedWords = new ArrayList<>();
+		BufferedReader reader = null;
 		try {
 			StringBuilder content = new StringBuilder();
 
@@ -124,7 +129,7 @@ public class Challenge implements Runnable {
 			URL targetUrl = new URL(String.format(url, word));
 			URLConnection conn = targetUrl.openConnection();
 			conn.connect();
-			BufferedReader reader = new BufferedReader(new InputStreamReader(conn.getInputStream()));
+			reader = new BufferedReader(new InputStreamReader(conn.getInputStream()));
 			
 			//Read the reply into the content string
 			reader.lines().forEach((String line) -> content.append(line));
@@ -144,6 +149,7 @@ public class Challenge implements Runnable {
 			}
 		} catch (MalformedURLException e) {/*discard*/}
 		catch (IOException e) {}
+		finally {try {reader.close();} catch (IOException e) {}}
 		return translatedWords;
 	}
 
@@ -200,11 +206,12 @@ public class Challenge implements Runnable {
 			       player2.getScore() - player2GameData.startingScore));
 			
 			//Pick the winner (if any) and award him the extra points
-			if (player1GameData.correctAnswers > player2GameData.correctAnswers) {
-				player1.incrScore(3);
+			if (player1.getScore() - player1GameData.startingScore > player2.getScore() - player2GameData.startingScore) {
+				player1.incrScore(winnerPoints);
 				player1.getHandler().write(Response.WINNER.getCode(3, player1.getScore() - player1GameData.startingScore));
-			} else if (player2GameData.correctAnswers > player1GameData.correctAnswers) {
-				player2.incrScore(3);
+			} else 
+			if (player2.getScore() - player2GameData.startingScore > player1.getScore() - player1GameData.startingScore) {
+				player2.incrScore(winnerPoints);
 				player2.getHandler().write(Response.WINNER.getCode(3, player2.getScore() - player2GameData.startingScore));
 			}
 		} catch (NoHandlerAssignedException e) {}
@@ -243,10 +250,10 @@ public class Challenge implements Runnable {
 			//Check if the received translation matches and award (or decrease) points accordingly
 			if (wordsMap.get(userGameData.currentWord).contains(translatedWord)) {
 				userGameData.correctAnswers++;
-				user.incrScore(2);
+				user.incrScore(correctAnswerPoints);
 			} else {
 				userGameData.wrongAnswers++;
-				user.decrScore(1);
+				user.decrScore(wrongAnswerPoints);
 			}
 			userGameData.numWords++;
 
@@ -275,8 +282,11 @@ public class Challenge implements Runnable {
 	 * @param user The user who quit.
 	 */
 	public synchronized void abortChallenge(User user) {
+		//Cancel the timers
 		gameTimer.cancel();
 		acceptanceTimer.cancel();
+
+		//Notify both players that the challenge is no more and set their state accordingly
 		User opponent = getOpponent(user);
 		try {
 			opponent.getHandler().write(Response.QUIT_CHALLENGE.getCode(user.getName()));
@@ -285,6 +295,7 @@ public class Challenge implements Runnable {
 		opponent.setState(UserState.IDLE);
 		user.setChallenge(null);
 		user.setState(UserState.IDLE);
+		Logger.logInfo("Aborted challenge between ", player1.getName(), " and ", player2.getName());
 	}
 
 	/**
@@ -301,6 +312,7 @@ public class Challenge implements Runnable {
 		player1.setState(UserState.IDLE);
 		player2.setChallenge(null);	
 		player2.setState(UserState.IDLE);
+		Logger.logInfo("Aborted challenge between ", player1.getName(), " and ", player2.getName());
 	}
 
 	public User getPlayer1() {

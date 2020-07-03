@@ -107,7 +107,7 @@ public class User {
 
 	private String name = "";
 	private String password = "";
-	private int score = 0;
+	private Integer score = 0;
 	private ConcurrentMap<String, User> friendlist;
 	private UserState state = UserState.OFFLINE;
 	private EventHandler handler = null;
@@ -199,8 +199,10 @@ public class User {
 	 * Returns the user's cumulative score.
 	 * @return the user's cumulative score.
 	 */
-	public synchronized int getScore() {
-		return score;
+	public int getScore() {
+		synchronized(score){
+			return score;
+		}
 	}
 
 	/**
@@ -208,20 +210,24 @@ public class User {
 	 * @param points the points to increase the score by.
 	 * @throws IllegalArgumentException if {@code points} is a negative integer.
 	 */
-	public synchronized void incrScore(int points) throws IllegalArgumentException {
-		if (points < 0) throw new IllegalArgumentException("argument must be a positive number");
-		score += points;
-		Database.getDatabase().updateUser(this);
+	public void incrScore(int points) throws IllegalArgumentException {
+		synchronized(score) {
+			if (points < 0) throw new IllegalArgumentException("argument must be a positive number");
+			score += points;
+			Database.getDatabase().updateUser(this);
+		}
 	}
 	/**
 	 * Decreases the user's score by {@code points} points.
 	 * @param points the points to decrease the score by.
 	 * @throws IllegalArgumentException if {@code points} is a negative integer.
 	 */
-	public synchronized void decrScore(int points) throws IllegalArgumentException {
-		if (points < 0) throw new IllegalArgumentException("argument must be a positive number");
-		score -= points;
-		Database.getDatabase().updateUser(this);
+	public void decrScore(int points) throws IllegalArgumentException {
+		synchronized (score) {
+			if (points < 0) throw new IllegalArgumentException("argument must be a positive number");
+			score -= points;
+			Database.getDatabase().updateUser(this);
+		}
 	}
 
 	/*
@@ -354,15 +360,23 @@ public class User {
 	 * Sets the user's status as logged out.
 	 */
 	public void logout() {
+		if (getChallenge() != null) {
+			getChallenge().abortChallenge(this);
+			setChallenge(null);
+		}
 		setState(UserState.OFFLINE);
-		setChallenge(null);
 		setHandler(null);
 	}
 
 	public void logoutNoNotify() {
-		this.state = UserState.OFFLINE;
-		setChallenge(null);
-		setHandler(null);
+		synchronized(this.state) {
+			if (getChallenge() != null) {
+				getChallenge().abortChallenge(this);
+				setChallenge(null);
+			}
+			this.state = UserState.OFFLINE;
+			setHandler(null);
+		}
 	}
 
 	/**

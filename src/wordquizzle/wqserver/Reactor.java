@@ -1,6 +1,7 @@
 package wordquizzle.wqserver;
 
 import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.nio.channels.*;
 import java.util.concurrent.BlockingQueue;
 import java.util.List;
@@ -22,7 +23,14 @@ public class Reactor extends Thread {
 	private int id;
 	private int numOfChannels ;
 	private Selector selector;
-	private BlockingQueue<SocketChannel> queue;
+	
+	//Wakeup stuff
+	private Pipe wakeupPipe;
+	private SelectionKey wakeupPipeKey;
+	private ByteBuffer wakeupPipeBuffer;
+	
+	//Channel stuff
+	private BlockingQueue<SocketChannel> registrationQueue;
 	private List<SocketChannel> channels;
 
 	/**
@@ -41,8 +49,12 @@ public class Reactor extends Thread {
 	public Reactor() {
 		try {
 			this.selector = Selector.open();
-			this.queue = new LinkedBlockingQueue<>();
+			this.registrationQueue = new LinkedBlockingQueue<>();
 			this.channels = new LinkedList<>();
+			this.wakeupPipe = Pipe.open();
+			wakeupPipe.source().configureBlocking(false);
+			this.wakeupPipeKey = wakeupPipe.source().register(selector, SelectionKey.OP_READ);
+			this.wakeupPipeBuffer = ByteBuffer.allocate(512);
 			this.id = Reactor.reactornum++;
 			this.numOfChannels = 0;
 		} catch (IOException e) {
@@ -51,13 +63,25 @@ public class Reactor extends Thread {
 	}
 
 	/**
+	 * Wakes up the reactor.
+	 */
+	public void wakeup() {
+		//Write to the pipe to wakeup the selector
+		ByteBuffer one = ByteBuffer.allocate(1);
+		try {
+			while (wakeupPipe.sink().write(one) == 0);
+		} catch (IOException e) {e.printStackTrace();}
+	}
+
+	/**
 	 * Registers a channel to the reactor channel set
 	 * @param channel the channel to register
 	 */
 	public void registerChannel(SocketChannel channel) {
-		queue.add(channel);
+		//Add channel to the queue
+		registrationQueue.add(channel);
+		wakeup();
 		this.numOfChannels++;
-		selector.wakeup();
 	}
 
 	/**
@@ -94,8 +118,8 @@ public class Reactor extends Thread {
 	private void handleChannelRegistration() {
 		SocketChannel channel;
 		try {
-			//Wait for 25ms for something to appear in the queue
-			if ((channel = queue.poll(25, TimeUnit.MILLISECONDS)) != null) {
+			//poll the queue
+			while ((channel = registrationQueue.poll(25, TimeUnit.MILLISECONDS)) != null) {
 				//Register the channel with the reactor.
 				SelectionKey key = channel.register(selector, SelectionKey.OP_READ);
 				channels.add(channel);
@@ -115,32 +139,34 @@ public class Reactor extends Thread {
 				//Check if there's channels awaiting registration with the reactor.
 				handleChannelRegistration();
 
-				//If there's AT LEAST one channel registered with the reactor go on and do work.
-				if (!channels.isEmpty()) {
-						selector.select();
-						for (SelectionKey key : selector.selectedKeys()) {
-							EventHandler evh = (EventHandler)key.attachment();
-							//Handle writes
-							if (key.isWritable())
-								try {evh.send();} catch (IOException e) {
-									removeChannel((SocketChannel)key.channel());
-									key.cancel();
-								}
-							
-							//Handle reads
-							if (key.isReadable()) 
-								try {evh.handle();} catch (IOException e) {
-									removeChannel((SocketChannel)key.channel());
-									key.cancel();
-								}
-							
-						}
-						selector.selectedKeys().clear();
-					}
+				//Select and do work (eventually)
+				selector.select();
+				if (wakeupPipeKey.isReadable()) {
+					//Handle wake ups
+					wakeupPipe.source().read(wakeupPipeBuffer);
+					wakeupPipeBuffer.clear();
 				}
-			catch (IOException e) {
+				selector.selectedKeys().remove(wakeupPipeKey);
+				for (SelectionKey key : selector.selectedKeys()) {
+					EventHandler evh = (EventHandler)key.attachment();
+					//Handle writes
+					if (key.isWritable())
+						try {evh.send();} catch (IOException e) {
+							removeChannel((SocketChannel)key.channel());
+							key.cancel();
+						}
+					
+					//Handle reads
+					if (key.isReadable()) 
+						try {evh.handle();} catch (IOException e) {
+							removeChannel((SocketChannel)key.channel());
+							key.cancel();
+						}
+					
+				}
+				selector.selectedKeys().clear();
+			} catch (IOException e) {
 				e.printStackTrace();
-				System.exit(1);
 				return;
 			} catch (ClosedSelectorException | CancelledKeyException e) {/*discard*/}
 		}
@@ -150,6 +176,7 @@ public class Reactor extends Thread {
 	 * Closes the Reactor and all its registered channels
 	 */
 	public void close() {
+		selector.wakeup();
 		try {
 			for (SocketChannel channel : channels) channel.close();
 			selector.close();
